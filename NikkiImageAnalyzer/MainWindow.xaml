@@ -7,6 +7,9 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="350" Width="525">
     <Grid>
-        
+        <DockPanel VerticalAlignment="Center">
+            <Button Content="Start" Width="75" DockPanel.Dock="Right" Click="Button_Click" />
+            <TextBox Name="VideoPathBox" />
+        </DockPanel>
     </Grid>
 </Window>
