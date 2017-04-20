@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace NikkiImageAnalyzer
 {
@@ -17,13 +18,14 @@ namespace NikkiImageAnalyzer
             var targets = Directory.EnumerateFiles(path, "*.png");
 
             var c = 0;
+            var r = new Regex("[0-9]{3,4}");
 
             using (var api = OcrApi.Create())
             {
                 api.Init(Languages.English);
                 api.ReadConfigFiles("TessConf.txt");
 
-                foreach (var item in targets)
+                foreach (var item in targets.Skip(0))
                 {
                     using (var src = new Bitmap(item))
                     {
@@ -33,9 +35,13 @@ namespace NikkiImageAnalyzer
                             using (tg)
                             {
                                 tg.Save($"test\\test_{c++}.png");
-                                var text = api.GetTextFromImage(tg).Trim();
-                                Console.WriteLine(text);
-                                break;
+                                var text = api.GetTextFromImage(tg);
+                                var m = r.Match(text);
+                                if (!m.Success)
+                                {
+                                    Console.WriteLine(text + "?");
+                                }
+                                Console.WriteLine(m.Value);
                             }
                         }
                     }
@@ -55,22 +61,58 @@ namespace NikkiImageAnalyzer
                 var w = src.Width;
                 byte* Scan(int x, int y, int offset) => scan + (y * w + x) * 4 + offset;
 
-                var s = 600;
+                var s = 510;
 
                 bool f = false;
                 var st = 320;
-                for (; st < 1280; st++)
-                {
-                    var v = *Scan(390, st, 0) + *Scan(390, st, 1) + *Scan(390, st, 2);
+                //for (; st < 1280; st++)
+                //{
+                //    var v = *Scan(390, st, 0) + *Scan(390, st, 1) + *Scan(390, st, 2);
 
-                    if (v > s)
+                //    if (v > s)
+                //    {
+                //        f = true;
+                //    }
+                //    else if (f)
+                //    {
+                //        if (*Scan(390, st + 4, 0) + *Scan(390, st + 4, 1) + *Scan(390, st + 4, 2) > s) break;
+                //        f = false;
+                //    }
+                //}
+
+                int Sum(int x, int y) => *Scan(x, y, 0) + *Scan(x, y, 1) + *Scan(x, y, 2);
+
+                bool Say(int yy)
+                {
+                    for (int i = 0; i < 40; i++)
                     {
-                        f = true;
+                        if (Sum(134 + i, yy) < s) return true;
                     }
-                    else if (f)
+
+                    return false;
+                }
+
+                bool Sax(int xx, int sy)
+                {
+                    for (int i = 0; i < 20; i++)
                     {
-                        if (*Scan(390, st + 4, 0) + *Scan(390, st + 4, 1) + *Scan(390, st + 4, 2) > s) break;
-                        f = false;
+                        if (Sum(xx, sy + i) < s) return true;
+                    }
+
+                    return false;
+                }
+
+                for (int i = 171; i < 1280 - 20; i++)
+                {
+                    if (!Say(i + 0) && !Say(i + 1) && !Say(i + 2) && !Say(i + 3)
+                        && Say(i + 7) && Say(i + 9) && Say(i + 11) && Say(i + 13)
+                        && !Say(i + 16) && !Say(i + 17) && !Say(i + 18) && !Say(i + 19)
+                        && !Sax(134, i) && !Sax(135, i) && !Sax(136, i) && !Sax(137, i)
+                        && !Sax(134 + 36, i) && !Sax(135 + 36, i) && !Sax(136 + 36, i) && !Sax(137 + 36, i)
+                        )
+                    {
+                        st = i + 149;
+                        break;
                     }
                 }
 
@@ -104,7 +146,7 @@ namespace NikkiImageAnalyzer
                 var sp2 = new Bitmap(40, 20);
                 using (var g = Graphics.FromImage(sp2))
                 {
-                    DrowImage(g, src, 433, i, 40, 20);
+                    DrowImage(g, src, 432, i, 40, 20);
                 }
 
                 yield return sp2;
